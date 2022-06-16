@@ -68,16 +68,13 @@ public class QuickBlueDarwin: NSObject, FlutterPlugin {
 
   private var scanResultSink: FlutterEventSink?
   private var messageConnector: FlutterBasicMessageChannel!
-  private var isBluetoothAvailableResult: FlutterResult?
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "isBluetoothAvailable":
       print("isBluetoothAvailable: \(manager.state)")  // Needed to trigger CBCentralManager initialization
-      isBluetoothAvailableResult = result
-      DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in  // The expected result will come from the centralManagerDidUpdateState delegate method. This is just a timeout in case the delegate never gets called
-        self?.isBluetoothAvailableResult?(false)
-        self?.isBluetoothAvailableResult = nil
+      DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in  // The expected reply will come from the centralManagerDidUpdateState delegate method. This is just a timeout in case the delegate never gets called
+        self?.messageConnector.sendMessage(["isBluetoothAvailable": false])
       }
     case "startScan":
       manager.scanForPeripherals(withServices: nil)
@@ -172,8 +169,7 @@ public class QuickBlueDarwin: NSObject, FlutterPlugin {
 extension QuickBlueDarwin: CBCentralManagerDelegate {
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
     print("centralManagerDidUpdateState \(central.state.rawValue)")
-    isBluetoothAvailableResult?(manager.state == .poweredOn)
-    isBluetoothAvailableResult = nil
+    messageConnector.sendMessage(["isBluetoothAvailable": manager.state == .poweredOn])
   }
 
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
